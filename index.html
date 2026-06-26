@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A4 打印排版工具</title>
+<link rel="stylesheet" href="styles.css">
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║  A4 打印排版工具 — 架构要点                                     ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  [布局] 左中右三栏，min-width:1400px                             ║
+║   · 左 panel-left:  数据输入 (textarea + 文件上传)               ║
+║   · 中 panel-middle: A4 预览 (100% 真实尺寸，可纵向滚动)         ║
+║   · 右 panel-right: 格式调整 (排版结构 → 文字格式 → 卡片样式)    ║
+║   · 左右栏 sticky 固定，中间栏独立滚动                            ║
+║                                                                ║
+║  [打印模式] window.print() + @media print (浏览器原生打印)       ║
+║   · exportPDF() 注入 <style media="print">@page 规则             ║
+║   · @page { margin: 8mm 10mm } + @media print 隐藏 UI 面板      ║
+║   · 无需新窗口、无叠加层，与右键 → 打印 (Ctrl+P) 完全一致       ║
+║   · .a4-page 在 screen 下 padding:8mm 10mm → 内容区 190mm      ║
+║   · 两种模式内容区一致，预览即所得                                ║
+║                                                                ║
+║  [排版引擎] calcPages() + updatePreview()                       ║
+║   · 固定网格：gridCols × gridRows 个格子，顺序填充                ║
+║   · 自定义尺寸：cardW x cardH + gap + margin，绝对定位排列       ║
+║   · buildCardContent() 生成单张卡片 HTML                        ║
+║   · exportPDF() 构建独立新窗口，写入纯 CSS 的 A4 打印文档         ║
+║                                                                ║
+║  [文件拆分]                                                     ║
+║   · index.html — DOM 结构 (仅引用外部资源)                       ║
+║   · styles.css  — 全部样式 (含 @media print)                    ║
+║   · app.js      — 全部逻辑 (解析、排版、预览、导出)              ║
+║   · prompt.md   — 重构方案文档                                  ║
+║                                                                ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+</head>
+<body>
+
+<div class="main">
+  <!-- 左面板：数据输入 -->
+  <div class="panel panel-left">
+    <div class="card">
+      <div class="panel-header">
+        <h1>CiCi工作室 - A4 打印排版工具</h1>
+        <span class="subtitle">粘贴数据 → 预览分页 → 打印 / 另存为 PDF</span>
+      </div>
+      <div class="card-title">📋 数据输入</div>
+      <div class="setting-row"><textarea class="data-textarea" id="dataInput" placeholder="每行一条数据，将按 A4 纸自动分栏排版...&#10;数据格式：姓名 评语内容（用 Tab 或逗号隔开）&#10;示例：&#10;张三 学习认真，团结同学，本学期进步显著。&#10;李四 思维活跃，积极参加班级活动，望再接再厉。" oninput="updatePreview()"></textarea></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="loadSampleData()">📋 加载示例</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('fileInput').click()">📂 上传文件</button>
+        <input type="file" id="fileInput" accept=".txt,.csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+        <button class="btn btn-outline btn-sm" onclick="clearData()">🗑️ 清空</button>
+      </div>
+      <div class="data-count" id="dataCount"></div>
+    </div>
+  </div>
+
+  <!-- 中面板：A4 预览 -->
+  <div class="panel panel-middle" id="previewPanel">
+    <div class="a4-pages" id="a4Pages">
+      <div style="color:var(--text-sec);text-align:center;padding:80px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">📄</div>
+        <div>请在左侧粘贴数据，然后点击「更新预览」</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右面板：格式调整 -->
+  <div class="panel panel-right">
+
+    <!-- 一、排版结构 (最重要) -->
+    <div class="card">
+      <div class="card-title">📐 排版结构</div>
+
+      <div class="setting-row">
+        <label>模式</label>
+        <select id="layoutMode" onchange="onLayoutModeChange()" style="flex:1;">
+          <option value="grid">固定网格 (分栏×行数)</option>
+          <option value="custom">自定义卡片尺寸</option>
+        </select>
+      </div>
+
+      <!-- 固定网格参数（默认可见） -->
+      <div id="gridSizeArea">
+        <div class="setting-row">
+          <label>分栏</label>
+          <select id="gridCols" onchange="updatePreview()">
+            <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option>
+          </select>
+          <label style="min-width:auto;">行数</label>
+          <select id="gridRows" onchange="updatePreview()">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option>
+          </select>
+          <label style="min-width:auto;">方向</label>
+          <select id="gridLayout" onchange="updatePreview()">
+            <option value="portrait">竖版</option><option value="landscape">横版</option>
+          </select>
+        </div>
+        <div class="setting-row" style="font-size:11px;color:var(--text-sec);">
+          <span>每页 <strong id="slotsPerPageLabel">8</strong> 张卡片</span>
+        </div>
+      </div>
+
+      <!-- 自定义卡片尺寸（默认隐藏） -->
+      <div id="customSizeArea" style="display:none;">
+        <div class="setting-row">
+          <label>卡宽</label><input type="number" id="cardWidthMm" value="90" min="20" max="290" oninput="updatePreview()"><span style="font-size:11px;color:var(--text-sec);">mm</span>
+          <label style="min-width:auto;">卡高</label><input type="number" id="cardHeightMm" value="65" min="20" max="410" oninput="updatePreview()"><span style="font-size:11px;color:var(--text-sec);">mm</span>
+        </div>
+        <div class="setting-row">
+          <label>间距</label><input type="number" id="cardGapMm" value="3" min="0" max="20" step="0.5" oninput="updatePreview()"><span style="font-size:11px;color:var(--text-sec);">mm</span>
+          <label style="min-width:auto;">边距</label><input type="number" id="pageMarginMm" value="8" min="0" max="40" oninput="updatePreview()"><span style="font-size:11px;color:var(--text-sec);">mm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 二、文字格式 -->
+    <div class="card">
+      <div class="card-title">🔤 文字格式</div>
+      <div class="setting-row" style="flex-wrap:wrap;gap:4px;">
+        <select id="fontFamily" onchange="updatePreview()" style="flex:1;min-width:60px;">
+          <option value="SimSun,宋体,serif">宋体</option>
+          <option value="FangSong,仿宋,serif" selected>仿宋</option>
+          <option value="KaiTi,楷体,serif">楷体</option>
+          <option value="'Microsoft YaHei',微软雅黑,sans-serif">微软雅黑</option>
+        </select>
+        <select id="fontSize" onchange="updatePreview()" style="width:56px;">
+          <option value="9">9</option><option value="10">10</option><option value="11" >11</option>
+          <option value="12">12</option><option value="13">13</option><option value="14">14</option>
+          <option value="15">15</option><option value="16" selected>16</option><option value="18">18</option>
+          <option value="20">20</option><option value="22">22</option><option value="24">24</option>
+          <option value="28">28</option><option value="32">32</option><option value="36">36</option>
+          <option value="40">40</option><option value="48">48</option><option value="56">56</option>
+          <option value="64">64</option>
+        </select>
+        <span style="font-size:10px;color:var(--text-sec);">行距</span>
+        <select id="lineHeight" onchange="updatePreview()" style="width:72px;">
+          <option value="1.3">1.3</option><option value="1.4" selected>1.4</option>
+          <option value="1.5">1.5</option><option value="1.6">1.6</option>
+        </select>
+      </div>
+
+      <div class="section-title" style="margin-top:6px;">📝 内容对齐</div>
+      <div class="setting-row" style="gap:4px;">
+        <select id="alignName" onchange="updatePreview()" style="flex:1;">
+          <option value="center">居中</option><option value="left">左对齐</option><option value="right">右对齐</option>
+        </select>
+        <select id="alignBody" onchange="updatePreview()" style="flex:1;">
+          <option value="justify">两端</option><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option>
+        </select>
+      </div>
+
+      <div class="section-title" style="margin-top:6px;">📎 附加内容</div>
+      <div class="setting-row">
+        <textarea id="sharedText" placeholder="统一文字（可选），如校训、寄语…" oninput="updatePreview()" style="flex:1;min-height:28px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;resize:none;font-family:inherit;line-height:1.4;"></textarea>
+      </div>
+      <div class="setting-row" style="gap:4px;">
+        <input type="text" id="signature" placeholder="署名，如：班主任：张老师" oninput="updatePreview()" style="flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;outline:none;">
+        <span style="font-size:10px;color:var(--text-sec);">对齐</span>
+        <select id="alignShared" onchange="updatePreview()" style="width:56px;">
+          <option value="left">靠左</option><option value="center">居中</option><option value="right" selected>靠右</option>
+        </select>
+        <span style="font-size:10px;color:var(--text-sec);">署名</span>
+        <select id="alignSig" onchange="updatePreview()" style="width:56px;">
+          <option value="left">靠左</option><option value="center">居中</option><option value="right" selected>靠右</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 三、卡片样式 -->
+    <div class="card">
+      <div class="card-title">🎨 卡片样式</div>
+
+      <!-- 内边距 -->
+      <div class="section-title">📏 内边距</div>
+      <div class="setting-row" style="gap:4px;">
+        <select id="cardPaddingPreset" onchange="onPaddingPresetChange()" style="flex:1;">
+          <option value="2">紧凑 2%</option><option value="4" selected>适中 4%</option>
+          <option value="6">宽松 6%</option><option value="0">自定义…</option>
+        </select>
+        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px;color:var(--text-sec);white-space:nowrap;">
+          <input type="checkbox" id="padSync" checked onchange="syncPadAll()">同步
+        </label>
+      </div>
+      <div id="paddingCustomArea" style="display:none;">
+        <div class="setting-row" style="gap:4px;">
+          <div class="pad-slider-group"><span class="pad-label">上</span><input type="range" id="padT" min="1" max="50" value="4" oninput="syncPadLabel();updatePreview()"><span class="pad-val" id="padTVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">右</span><input type="range" id="padR" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padRVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">下</span><input type="range" id="padB" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padBVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">左</span><input type="range" id="padL" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padLVal">4%</span></div>
+        </div>
+      </div>
+
+      <!-- 背景图 -->
+      <div class="section-title" style="margin-top:6px;">🖼️ 背景图</div>
+      <div class="setting-row" style="flex-wrap:wrap;gap:4px;">
+        <input type="text" id="bgUrl" placeholder="图片 URL 或 data: 地址（选填）" oninput="updatePreview()" style="flex:1;min-width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;outline:none;">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('bgFileInput').click()" title="选择文件">📁</button>
+        <button class="btn btn-outline btn-sm" onclick="clearBgImage()" title="清除背景">✕</button>
+        <input type="file" id="bgFileInput" accept="image/*" style="display:none" onchange="handleBgUpload(event)">
+      </div>
+      <div class="bg-drop-zone" id="bgDropZone" style="padding:4px;"><span>📤 拖拽图片到此处上传</span></div>
+      <div class="setting-row" style="gap:4px;">
+        <select id="bgSize" onchange="updatePreview()" style="flex:1;">
+          <option value="cover">cover</option><option value="contain">contain</option>
+          <option value="100% 100%">拉伸</option><option value="auto">原始</option>
+        </select>
+        <select id="bgPosition" onchange="updatePreview()" style="flex:1;">
+          <option value="center center">居中</option><option value="center top">顶部</option>
+          <option value="center bottom">底部</option><option value="left top">左上</option><option value="right top">右上</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div style="text-align:center;padding:2px 0;">
+      <button class="btn btn-primary" style="padding:8px 20px;font-size:13px;font-weight:600;" onclick="exportPDF()">🖨️ 打印 / 导出 PDF</button>
+      <div style="margin-top:3px;font-size:10px;color:var(--text-sec);line-height:1.3;">
+        调用系统打印 → 另存为 PDF 或直接打印；边距选「无」、勾选「背景图形」
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
