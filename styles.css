@@ -204,9 +204,9 @@ body {
   .main { display: block !important; overflow: hidden !important; }
   .panel-middle { display: block !important; border: none !important; padding: 0 !important; overflow: hidden !important; }
   .a4-pages { display: block !important; padding: 0 !important; gap: 0 !important; overflow: hidden !important; }
-  .a4-page { display: flex !important; flex-direction: column !important; width: 190mm !important; min-width: 190mm !important; max-width: 190mm !important; height: 281mm !important; min-height: 281mm !important; max-height: 281mm !important; padding: 8mm 10mm !important; margin: 0 auto !important; border: none !important; box-shadow: none !important; box-sizing: border-box !important; page-break-after: always !important; page-break-inside: avoid !important; overflow: hidden !important; }
+  .a4-page { display: flex !important; flex-direction: column !important; width: 190mm !important; min-width: 190mm !important; max-width: 190mm !important; height: 281mm !important; min-height: 281mm !important; max-height: 281mm !important; padding: 0 !important; margin: 0 auto !important; border: none !important; box-shadow: none !important; box-sizing: border-box !important; page-break-after: always !important; page-break-inside: avoid !important; overflow: hidden !important; }
   .a4-page:last-child { page-break-after: avoid !important; }
-  .a4-page.landscape { width: 277mm !important; min-width: 277mm !important; max-width: 277mm !important; height: 194mm !important; min-height: 194mm !important; max-height: 194mm !important; padding: 8mm 10mm !important; }
+  .a4-page.landscape { width: 277mm !important; min-width: 277mm !important; max-width: 277mm !important; height: 194mm !important; min-height: 194mm !important; max-height: 194mm !important; padding: 0 !important; }
   .a4-grid { display: grid !important; flex: 1 1 0% !important; min-height: 0 !important; overflow: hidden !important; gap: 3mm !important; }
   .a4-card { display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; border: 1px solid #ccc !important; }
   .a4-card-empty { border-color: transparent !important; background: transparent !important; }

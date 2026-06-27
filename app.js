@@ -178,9 +178,9 @@ function updatePreview() {
         var row = Math.floor(i / s._customCols);
         var left = (s._customOffX + col * (s.cardW + s.cardGap)).toFixed(2);
         var top = (s._customOffY + row * (s.cardH + s.cardGap)).toFixed(2);
-        var pT = (s.cardW * s.padT / 100).toFixed(2) + "mm";
+        var pT = (s.cardH * s.padT / 100).toFixed(2) + "mm";
         var pR = (s.cardW * s.padR / 100).toFixed(2) + "mm";
-        var pB = (s.cardW * s.padB / 100).toFixed(2) + "mm";
+        var pB = (s.cardH * s.padB / 100).toFixed(2) + "mm";
         var pL = (s.cardW * s.padL / 100).toFixed(2) + "mm";
         var bgStyle = "";
         if (s.bgUrl) { bgStyle = "background-image:url(" + s.bgUrl + ");background-size:" + s.bgSize + ";background-position:" + s.bgPosition + ";background-repeat:no-repeat;"; }
@@ -195,9 +195,9 @@ function updatePreview() {
         var line = pages[p][i];
         if (!line) { html += "<div class=\"a4-card a4-card-empty\"></div>"; continue; }
         var parsed = parseLine(line);
-        var pT = (cs.w * s.padT / 100).toFixed(2) + "mm";
+        var pT = (cs.h * s.padT / 100).toFixed(2) + "mm";
         var pR = (cs.w * s.padR / 100).toFixed(2) + "mm";
-        var pB = (cs.w * s.padB / 100).toFixed(2) + "mm";
+        var pB = (cs.h * s.padB / 100).toFixed(2) + "mm";
         var pL = (cs.w * s.padL / 100).toFixed(2) + "mm";
         var bgStyle = "";
         if (s.bgUrl) { bgStyle = "background-image:url(" + s.bgUrl + ");background-size:" + s.bgSize + ";background-position:" + s.bgPosition + ";background-repeat:no-repeat;"; }
@@ -230,9 +230,9 @@ function exportPDF() {
     document.head.appendChild(ps);
   }
   if (isLandscape) {
-    ps.textContent = "@page { size: 297mm 210mm; margin: 8mm 10mm; }";
+    ps.textContent = "@page { size: 297mm 210mm; margin: 8mm 10mm; } html, body { width: 297mm !important; min-width: 297mm !important; }";
   } else {
-    ps.textContent = "@page { size: 210mm 297mm; margin: 8mm 10mm; }";
+    ps.textContent = "@page { size: 210mm 297mm; margin: 8mm 10mm; } html, body { width: 210mm !important; min-width: 210mm !important; }";
   }
 
   // 调用浏览器原生打印（用户可选 PDF / 打印机 / 右键打印）

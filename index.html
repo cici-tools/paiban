@@ -190,9 +190,9 @@
       <div id="paddingCustomArea" style="display:none;">
         <div class="setting-row" style="gap:4px;">
           <div class="pad-slider-group"><span class="pad-label">上</span><input type="range" id="padT" min="1" max="50" value="4" oninput="syncPadLabel();updatePreview()"><span class="pad-val" id="padTVal">4%</span></div>
-          <div class="pad-slider-group"><span class="pad-label">右</span><input type="range" id="padR" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padRVal">4%</span></div>
-          <div class="pad-slider-group"><span class="pad-label">下</span><input type="range" id="padB" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padBVal">4%</span></div>
-          <div class="pad-slider-group"><span class="pad-label">左</span><input type="range" id="padL" min="1" max="50" value="4" oninput="syncPadLabel();if(!padSync.checked){return}syncPadFromT();updatePreview()"><span class="pad-val" id="padLVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">右</span><input type="range" id="padR" min="1" max="50" value="4" oninput="syncPadLabel();if(padSync.checked){syncPadFromT()}updatePreview()"><span class="pad-val" id="padRVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">下</span><input type="range" id="padB" min="1" max="50" value="4" oninput="syncPadLabel();if(padSync.checked){syncPadFromT()}updatePreview()"><span class="pad-val" id="padBVal">4%</span></div>
+          <div class="pad-slider-group"><span class="pad-label">左</span><input type="range" id="padL" min="1" max="50" value="4" oninput="syncPadLabel();if(padSync.checked){syncPadFromT()}updatePreview()"><span class="pad-val" id="padLVal">4%</span></div>
         </div>
       </div>
 
